@@ -214,6 +214,10 @@ inside the encrypted SSH tunnel. If a domain is later attached, point its A reco
 to the reserved IP and add Caddy or another TLS-terminating proxy for Let's
 Encrypt HTTPS. Never use self-signed TLS as a public-production substitute.
 
+`deploy/configure-production.sh <PUBLIC_IP>` creates the VM-only `.env` with
+cryptographically random administrator and short-code secrets, refuses to
+overwrite an existing environment, and sets file mode `0600`.
+
 ## Security and scaling notes
 
 - Production startup rejects weak/default admin keys, missing short-code HMAC
