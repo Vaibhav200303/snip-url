@@ -27,8 +27,7 @@ class SnowflakeGenerator:
     ):
         if not 0 <= worker_id <= self.MAX_WORKER_ID:
             raise InvalidWorkerIdError(
-                f"worker_id must be between 0 and "
-                f"{self.MAX_WORKER_ID}"
+                f"worker_id must be between 0 and {self.MAX_WORKER_ID}"
             )
 
         self.worker_id = worker_id
@@ -49,23 +48,16 @@ class SnowflakeGenerator:
 
             if timestamp < 0:
                 raise ClockRollbackError(
-                    "Current time is before the configured "
-                    "Snowflake epoch"
+                    "Current time is before the configured Snowflake epoch"
                 )
 
             if current_timestamp < self.last_timestamp:
-                rollback_ms = (
-                    self.last_timestamp - current_timestamp
-                )
+                rollback_ms = self.last_timestamp - current_timestamp
 
                 if rollback_ms > self.max_clock_rollback_ms:
-                    raise ClockRollbackError(
-                        f"Clock moved backward by {rollback_ms}ms"
-                    )
+                    raise ClockRollbackError(f"Clock moved backward by {rollback_ms}ms")
 
-                current_timestamp = self._wait_until(
-                    self.last_timestamp
-                )
+                current_timestamp = self._wait_until(self.last_timestamp)
 
                 timestamp = current_timestamp - self.epoch_ms
 
@@ -73,9 +65,7 @@ class SnowflakeGenerator:
                 self.sequence += 1
 
                 if self.sequence > self.MAX_SEQUENCE:
-                    current_timestamp = self._wait_until(
-                        self.last_timestamp + 1
-                    )
+                    current_timestamp = self._wait_until(self.last_timestamp + 1)
 
                     timestamp = current_timestamp - self.epoch_ms
                     self.sequence = 0
@@ -97,9 +87,7 @@ class SnowflakeGenerator:
         while current_timestamp < target_timestamp:
             remaining_ms = target_timestamp - current_timestamp
 
-            self.clock.sleep_ms(
-                min(remaining_ms, 1)
-            )
+            self.clock.sleep_ms(min(remaining_ms, 1))
 
             current_timestamp = self.clock.now_ms()
 

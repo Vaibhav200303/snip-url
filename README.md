@@ -21,12 +21,13 @@ FastAPI
 ```
 
 The frontend is React, TypeScript, and Vite. Nginx serves its production build
-and routes public creation, `/health/*`, and valid single-segment short codes to
-FastAPI. The management API and `/admin` are available only on a loopback-bound
+and routes public creation, aggregate analytics lookup, `/health/*`, and valid
+single-segment short codes to FastAPI. The management API and `/admin` are available only on a loopback-bound
 listener reached through SSH, preventing both credential exposure and arbitrary
 SPA paths from being mistaken for short codes.
 
-Cassandra stores canonical URL records and a denormalized creation-time index.
+Cassandra stores canonical URL records plus denormalized creation-time and
+destination-hash indexes.
 Redis is non-authoritative: cache or rate-limiter failures do not take down URL
 operations. Successful redirects publish privacy-minimal click events containing
 only an event ID, short code, and timestamp. The consumer stores idempotent events
@@ -73,12 +74,27 @@ curl "http://localhost:8080/api/v1/urls/example/analytics?from=2026-10-01&to=202
 ```
 
 Analytics is eventually consistent; a redirect may take a few seconds to appear.
+Anyone can check aggregate activity for an active link without an API key:
+
+```bash
+curl -X POST http://localhost/api/v1/public/analytics \
+  -H "Content-Type: application/json" \
+  -d '{"url":"example"}'
+```
+
+The `url` value may be a short code, a complete SnipURL, or an original
+destination URL. Destination lookups aggregate all active links for the exact
+normalized URL. The response reveals only the number of matching active links,
+total clicks, and daily click buckets for the last 30 days. Disabled, expired,
+missing, and malformed inputs share the same neutral `analytics_not_found`
+response. Optional `from` and `to` ISO dates may be included in the JSON body.
 
 ## API
 
 | Method | Path | Access | Purpose |
 |---|---|---|---|
 | POST | `/api/v1/urls` | Public | Create a short URL |
+| POST | `/api/v1/public/analytics` | Public | Aggregate activity for an active URL |
 | GET | `/{short_code}` | Public | Redirect to the destination |
 | GET | `/api/v1/urls` | API key | Cursor-paginated URL list |
 | GET | `/api/v1/urls/{short_code}` | API key | Read URL metadata |
@@ -101,7 +117,8 @@ See `.env.example` for all settings. Important production values are:
 - `ADMIN_API_KEY`: secret for management and analytics operations.
 - `SHORT_CODE_SECRET`: HMAC secret that masks Snowflake IDs in public codes.
 - `SNOWFLAKE_WORKER_ID`: must be unique per concurrently running API replica.
-- `CREATE_RATE_LIMIT` and `REDIRECT_RATE_LIMIT`: per-IP requests per window.
+- `CREATE_RATE_LIMIT`, `REDIRECT_RATE_LIMIT`, and
+  `PUBLIC_ANALYTICS_RATE_LIMIT`: per-IP requests per window.
 - `ANALYTICS_RETENTION_DAYS`: Cassandra TTL for click events.
 - `TRUSTED_HOSTS`: comma-separated hosts accepted by FastAPI.
 - `CORS_ORIGINS`: comma-separated development origins; use an empty value for
@@ -136,22 +153,26 @@ docker compose config
 cd frontend && npm run lint && npm run build
 ```
 
-Schema bootstrap is intentionally idempotent and can add fields missing from the
-original prototype. It is a development convenience, not a general migration
-framework. The URL record and listing index are denormalized Cassandra writes and
-are not transactional; repair tooling would be appropriate at larger scale.
+Schema bootstrap is intentionally idempotent, can add fields missing from the
+original prototype, and backfills the destination lookup table from the listing
+index. It is a development convenience, not a general migration framework. The
+URL record and indexes are denormalized Cassandra writes and are not transactional;
+repair tooling would be appropriate at larger scale.
 
 ## Intentional boundaries
 
 This release has one administrator API key rather than user accounts. It does not
 include billing, custom domains, QR codes, or detailed visitor tracking.
-Analytics counts are privacy-minimal and eventually consistent.
+Analytics counts are privacy-minimal and eventually consistent. Public analytics
+intentionally expose only aggregate counts for currently active links; private
+metadata and management controls remain administrator-only.
 
 ## Frontend and admin dashboard
 
-The home page creates generated or custom short links, supports expiration, and
-keeps the eight most recent creations in browser `localStorage`. That recent list
-is explicitly local history, not an account feature.
+The home page creates generated or custom short links, supports expiration,
+offers the public aggregate analytics lookup, and keeps the eight most recent
+creations in browser `localStorage`. That recent list is explicitly local history,
+not an account feature.
 
 `http://localhost:8080/admin` prompts for `ADMIN_API_KEY`, stores it only in browser `sessionStorage`,
 and provides URL listing, enable/disable, deletion, and date-range analytics. The
@@ -171,7 +192,7 @@ Cassandra, Redis, and Kafka have no host port mappings.
 
 Named volumes survive ordinary restarts and `docker compose down`:
 
-- `snip-url_cassandra_data`: canonical URLs, listing index, and analytics.
+- `snip-url_cassandra_data`: canonical URLs, lookup indexes, and analytics.
 - `snip-url_redis_data`: rebuildable cache and rate-limit counters.
 - `snip-url_kafka_data`: queued click events and broker metadata.
 
@@ -226,7 +247,8 @@ overwrite an existing environment, and sets file mode `0600`.
   `[A-Za-z0-9_-]{3,32}` and reserved application paths are rejected.
 - Management endpoints use constant-time API-key comparison. The key belongs in
   the VM-only `.env`, not Git, image layers, or frontend variables.
-- Public HTTP returns 404 for `/admin` and all management/analytics requests.
+- Public HTTP returns 404 for `/admin`, URL metadata, management operations, and
+  per-code administrator analytics. Only the privacy-limited aggregate lookup is public.
   Administrative traffic is restricted to a loopback listener reached through
   SSH, so `ADMIN_API_KEY` is never sent over public cleartext HTTP.
 - Nginx adds basic browser security headers, FastAPI validates trusted hosts, and

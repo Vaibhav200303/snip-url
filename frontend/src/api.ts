@@ -1,4 +1,4 @@
-import type { Analytics, UrlList, UrlRecord } from './types'
+import type { Analytics, PublicAnalytics, UrlList, UrlRecord } from './types'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
@@ -31,6 +31,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       url_not_found: 'This short link no longer exists.',
       url_expired: 'This short link has expired.',
       url_disabled: 'This short link is disabled.',
+      analytics_not_found: 'No active SnipURL was found for that address.',
     }
     throw new ApiError(response.status, code, safeMessages[code] ?? 'The request could not be completed.')
   }
@@ -47,6 +48,14 @@ export function createUrl(body: { long_url: string; custom_alias?: string; expir
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  })
+}
+
+export function getPublicAnalytics(url: string) {
+  return request<PublicAnalytics>('/api/v1/public/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
   })
 }
 

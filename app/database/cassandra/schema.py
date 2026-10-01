@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 from app.database.cassandra.connection import cassandra_connection
@@ -74,4 +75,53 @@ def create_tables() -> None:
         ) WITH CLUSTERING ORDER BY (clicked_at DESC, event_id ASC)
         """
     )
+    session.execute(
+        """
+        CREATE TABLE IF NOT EXISTS urls_by_destination (
+            destination_hash text,
+            created_at timestamp,
+            short_code text,
+            long_url text,
+            expiration_at timestamp,
+            is_enabled boolean,
+            PRIMARY KEY ((destination_hash), created_at, short_code)
+        ) WITH CLUSTERING ORDER BY (created_at DESC, short_code ASC)
+        """
+    )
+    _backfill_destination_index()
     logger.info("Cassandra schema is ready")
+
+
+def _backfill_destination_index() -> None:
+    """Populate the lookup table for links created before the table existed.
+
+    This project intentionally uses an idempotent development bootstrap rather
+    than a general-purpose Cassandra migration framework.
+    """
+    session = cassandra_connection.get_session()
+    insert = session.prepare(
+        "INSERT INTO urls_by_destination "
+        "(destination_hash,created_at,short_code,long_url,expiration_at,is_enabled) "
+        "VALUES (?,?,?,?,?,?)"
+    )
+    rows = session.execute(
+        "SELECT created_at,short_code,long_url,expiration_at,is_enabled "
+        "FROM urls_by_created WHERE bucket='all'"
+    )
+    count = 0
+    for row in rows:
+        destination_hash = hashlib.sha256(row.long_url.encode("utf-8")).hexdigest()
+        session.execute(
+            insert,
+            [
+                destination_hash,
+                row.created_at,
+                row.short_code,
+                row.long_url,
+                row.expiration_at,
+                row.is_enabled,
+            ],
+        )
+        count += 1
+    if count:
+        logger.info("Backfilled destination lookup index", extra={"rows": count})

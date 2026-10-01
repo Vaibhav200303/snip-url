@@ -23,3 +23,9 @@ export interface Analytics {
   total_clicks: number
   daily: DailyClicks[]
 }
+
+export interface PublicAnalytics {
+  matched_links: number
+  total_clicks: number
+  daily: DailyClicks[]
+}

@@ -22,6 +22,8 @@ class CassandraConnection:
         if self.cluster:
             self.cluster.shutdown()
             self.cluster = None
+
+
     def get_session(self)-> Session:
         if not self.session:
             raise RuntimeError("Cassandra session is not established. Call connect() first.")

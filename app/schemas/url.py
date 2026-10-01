@@ -77,7 +77,9 @@ class UpdateUrlRequest(BaseModel):
         if not changed:
             raise ValueError("at least one field must be changed")
         if self.expiration_at is not None and self.clear_expiration:
-            raise ValueError("expiration_at and clear_expiration are mutually exclusive")
+            raise ValueError(
+                "expiration_at and clear_expiration are mutually exclusive"
+            )
         return self
 
 
@@ -97,5 +99,25 @@ class DailyClicks(BaseModel):
 
 class AnalyticsResponse(BaseModel):
     short_code: str
+    total_clicks: int
+    daily: list[DailyClicks]
+
+
+class PublicAnalyticsRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    from_date: date | None = Field(default=None, alias="from")
+    to_date: date | None = Field(default=None, alias="to")
+
+    @field_validator("url")
+    @classmethod
+    def strip_url(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("url cannot be empty")
+        return value
+
+
+class PublicAnalyticsResponse(BaseModel):
+    matched_links: int
     total_clicks: int
     daily: list[DailyClicks]

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 
 from app.api.dependencies.services import (
+    get_analytics_service,
     get_click_publisher,
     get_redirect_service,
     get_url_service,
@@ -41,6 +42,15 @@ class Publisher:
         self.codes.append(code)
 
 
+class AnalyticsService:
+    def get_public(self, _url, _start, _end):
+        return {
+            "matched_links": 1,
+            "total_clicks": 4,
+            "daily": [{"date": "2026-10-01", "clicks": 4}],
+        }
+
+
 @asynccontextmanager
 async def no_lifespan(_app):
     yield
@@ -51,6 +61,7 @@ def make_client():
     app.dependency_overrides[get_url_service] = lambda: UrlService()
     app.dependency_overrides[get_redirect_service] = lambda: RedirectService()
     app.dependency_overrides[get_click_publisher] = lambda: publisher
+    app.dependency_overrides[get_analytics_service] = lambda: AnalyticsService()
     app.router.lifespan_context = no_lifespan
     return TestClient(app), publisher
 
@@ -58,9 +69,7 @@ def make_client():
 def test_create_returns_followable_root_url():
     client, _ = make_client()
     with client:
-        response = client.post(
-            "/api/v1/urls", json={"long_url": "https://example.com"}
-        )
+        response = client.post("/api/v1/urls", json={"long_url": "https://example.com"})
     assert response.status_code == 201
     assert response.json()["short_url"].endswith("/abc")
 
@@ -102,3 +111,18 @@ def test_rate_limit_identity_uses_proxy_real_ip(monkeypatch):
         )
     assert response.status_code == 201
     assert identities == ["203.0.113.9"]
+
+
+def test_public_analytics_does_not_require_admin_key(monkeypatch):
+    client, _ = make_client()
+    monkeypatch.setattr("app.api.routes.urls.rate_limiter.check", lambda *_: None)
+    with client:
+        response = client.post(
+            "/api/v1/public/analytics", json={"url": "https://example.com"}
+        )
+    assert response.status_code == 200
+    assert response.json() == {
+        "matched_links": 1,
+        "total_clicks": 4,
+        "daily": [{"date": "2026-10-01", "clicks": 4}],
+    }

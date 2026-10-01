@@ -14,10 +14,12 @@ class FakeClock:
         self.timestamp_ms += milliseconds
 
 
-#First test — basic generation
+# First test — basic generation
 from app.id_generator.snowflake import SnowflakeGenerator
 
 EPOCH = 0
+
+
 def test_generates_positive_id():
     clock = FakeClock(1000)
 
@@ -32,7 +34,7 @@ def test_generates_positive_id():
     assert snowflake_id > 0
 
 
-#Test same-millisecond generation
+# Test same-millisecond generation
 def test_generates_unique_ids_in_same_millisecond():
     clock = FakeClock(1000)
 
@@ -47,7 +49,7 @@ def test_generates_unique_ids_in_same_millisecond():
     assert len(ids) == len(set(ids))
 
 
-#Test monotonicity
+# Test monotonicity
 def test_ids_are_monotonically_increasing():
     clock = FakeClock(1000)
 
@@ -61,7 +63,8 @@ def test_ids_are_monotonically_increasing():
 
     assert ids == sorted(ids)
 
-#Test sequence overflow
+
+# Test sequence overflow
 def test_sequence_overflow_moves_to_next_millisecond():
     clock = FakeClock(1000)
 
@@ -81,7 +84,7 @@ def test_sequence_overflow_moves_to_next_millisecond():
     assert generator.sequence == 0
 
 
-#Test small clock rollback
+# Test small clock rollback
 def test_small_clock_rollback_waits_for_clock_to_catch_up():
     clock = FakeClock(1000)
 
@@ -103,7 +106,7 @@ def test_small_clock_rollback_waits_for_clock_to_catch_up():
     assert clock.sleep_calls > 0
 
 
-#Test large rollback
+# Test large rollback
 from app.id_generator.exceptions import ClockRollbackError
 
 
@@ -125,7 +128,7 @@ def test_large_clock_rollback_raises_error():
         generator.generate()
 
 
-#Test worker ID validation
+# Test worker ID validation
 from app.id_generator.exceptions import InvalidWorkerIdError
 
 
@@ -141,8 +144,7 @@ def test_invalid_worker_id_is_rejected(worker_id):
         )
 
 
-
-#Test different workers
+# Test different workers
 def test_different_workers_generate_different_ids():
     clock = FakeClock(1000)
 
@@ -163,7 +165,8 @@ def test_different_workers_generate_different_ids():
 
     assert ids_1.isdisjoint(ids_2)
 
-#concurrency test
+
+# concurrency test
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -188,7 +191,7 @@ def test_concurrent_generation_produces_unique_ids():
     assert len(set(ids)) == 3000
 
 
-#We should also verify that the IDs are globally unique across workers under concurrent generation.
+# We should also verify that the IDs are globally unique across workers under concurrent generation.
 def test_concurrent_generation_across_workers():
     clock = FakeClock(1000)
 

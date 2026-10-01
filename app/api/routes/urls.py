@@ -13,6 +13,8 @@ from app.api.dependencies.services import (
 from app.config.settings import settings
 from app.schemas.url import (
     AnalyticsResponse,
+    PublicAnalyticsRequest,
+    PublicAnalyticsResponse,
     ShortenUrlRequest,
     ShortenUrlResponse,
     UpdateUrlRequest,
@@ -26,6 +28,7 @@ from app.services.redirect_service import RedirectService
 from app.services.url_service import UrlService
 
 api_router = APIRouter(prefix="/api/v1/urls", tags=["URLs"])
+public_api_router = APIRouter(prefix="/api/v1/public", tags=["Public analytics"])
 redirect_router = APIRouter(tags=["Redirects"])
 rate_limiter = RateLimiter()
 
@@ -113,6 +116,21 @@ def get_analytics(
     end = to_date or datetime.now(UTC).date()
     start = from_date or end - timedelta(days=29)
     return service.get(short_code, start, end)
+
+
+@public_api_router.post("/analytics", response_model=PublicAnalyticsResponse)
+def get_public_analytics(
+    payload: PublicAnalyticsRequest,
+    request: Request,
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    rate_limiter.check(
+        "public_analytics",
+        _identity(request),
+        settings.public_analytics_rate_limit,
+        settings.rate_limit_window_seconds,
+    )
+    return service.get_public(payload.url, payload.from_date, payload.to_date)
 
 
 @redirect_router.get("/{short_code}", include_in_schema=False)

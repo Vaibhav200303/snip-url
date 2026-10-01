@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError, createUrl } from './api'
+import { ApiError, createUrl, getPublicAnalytics } from './api'
 import { CopyButton, Header, Icon, Logo, Spinner } from './components'
 import { addRecent, getRecent } from './storage'
-import type { UrlRecord } from './types'
+import type { PublicAnalytics, UrlRecord } from './types'
 
 function formatDate(value: string | null) {
   return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Never'
@@ -16,6 +16,10 @@ export default function Home() {
   const [recent, setRecent] = useState<UrlRecord[]>(getRecent)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [analyticsQuery, setAnalyticsQuery] = useState('')
+  const [analytics, setAnalytics] = useState<PublicAnalytics | null>(null)
+  const [analyticsError, setAnalyticsError] = useState('')
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -52,6 +56,26 @@ export default function Home() {
       setLoading(false)
     }
   }
+
+  async function lookupAnalytics(event: FormEvent) {
+    event.preventDefault()
+    if (!analyticsQuery.trim()) {
+      setAnalyticsError('Enter a short code, SnipURL, or destination URL.')
+      return
+    }
+    setAnalyticsError('')
+    setAnalyticsLoading(true)
+    try {
+      setAnalytics(await getPublicAnalytics(analyticsQuery.trim()))
+    } catch (cause) {
+      setAnalytics(null)
+      setAnalyticsError(cause instanceof ApiError ? cause.message : 'Could not load activity. Please try again.')
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }
+
+  const maxClicks = Math.max(...(analytics?.daily.map((day) => day.clicks) ?? [0]), 1)
 
   return <div className="site-shell">
     <Header />
@@ -91,6 +115,35 @@ export default function Home() {
         </div>
         <div className="actions"><CopyButton value={result.short_url}/><a className="button ghost small" href={result.short_url} target="_blank"><Icon name="open"/>Open</a></div>
       </section>}
+
+      <section className="public-analytics">
+        <div className="section-heading analytics-heading">
+          <div><span className="section-label">Public activity</span><h2>Check link analytics</h2></div>
+          <p>Active links only · Last 30 days</p>
+        </div>
+        <div className="analytics-lookup card">
+          <form onSubmit={lookupAnalytics} noValidate>
+            <label htmlFor="analytics-url">Short code or URL
+              <span>Use a SnipURL or its destination</span>
+            </label>
+            <div className="lookup-row">
+              <input id="analytics-url" value={analyticsQuery} onChange={(event) => setAnalyticsQuery(event.target.value)} placeholder="abc123 or https://example.com" />
+              <button className="button primary" disabled={analyticsLoading}>{analyticsLoading ? <><Spinner/>Checking…</> : 'Check activity'}</button>
+            </div>
+            {analyticsError && <div className="alert" role="alert">{analyticsError}</div>}
+          </form>
+
+          {analytics && <div className="public-analytics-result appear" aria-live="polite">
+            <div className="public-total"><strong>{analytics.total_clicks.toLocaleString()}</strong><span>redirects in the last 30 days</span></div>
+            <div className="public-chart" aria-label={`Daily redirects. Total ${analytics.total_clicks}.`}>
+              {analytics.daily.map((day) => <div className="public-bar-wrap" key={day.date} title={`${day.date}: ${day.clicks}`}>
+                <div className="public-bar" style={{ height: `${Math.max((day.clicks / maxClicks) * 100, day.clicks ? 5 : 2)}%` }} />
+              </div>)}
+            </div>
+            <p>{analytics.matched_links === 1 ? '1 active link matched' : `${analytics.matched_links} active links matched`}</p>
+          </div>}
+        </div>
+      </section>
 
       {recent.length > 0 && <section className="recent-section">
         <div className="section-heading"><div><span className="section-label">Local history</span><h2>Recent links</h2></div><p>Stored only in this browser</p></div>

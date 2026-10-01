@@ -34,7 +34,7 @@ class RedirectService:
         if cached_url is not None:
             logger.info("Cache hit", extra={"short_code": short_code})
             return cached_url
-        
+
         logger.info("Cache miss", extra={"short_code": short_code})
         # 2. Cache miss → Cassandra
         row = self.repository.get_by_short_code(short_code)

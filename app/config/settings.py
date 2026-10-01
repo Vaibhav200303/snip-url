@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
     create_rate_limit: int = 30
     redirect_rate_limit: int = 300
+    public_analytics_rate_limit: int = 30
     rate_limit_window_seconds: int = 60
     max_page_size: int = 100
     generated_code_retries: int = 5

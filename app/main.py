@@ -10,13 +10,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes.urls import api_router, redirect_router
+from app.api.routes.urls import api_router, public_api_router, redirect_router
 from app.config.settings import settings, validate_production_settings
 from app.core.exceptions import InvalidApiKeyError
 from app.database.cassandra.connection import cassandra_connection
 from app.database.cassandra.schema import create_keyspace, create_tables
 from app.repositories.url_repository import InvalidCursorError
-from app.services.analytics_service import AnalyticsRangeError
+from app.services.analytics_service import (
+    AnalyticsRangeError,
+    PublicAnalyticsNotFoundError,
+)
 from app.services.click_publisher import ClickPublisher
 from app.services.rate_limiter import RateLimitExceededError
 from app.services.redirect_service import (
@@ -68,13 +71,17 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=[host.strip() for host in settings.trusted_hosts.split(",") if host.strip()],
+    allowed_hosts=[
+        host.strip() for host in settings.trusted_hosts.split(",") if host.strip()
+    ],
 )
 if settings.cors_origins:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()
+            origin.strip()
+            for origin in settings.cors_origins.split(",")
+            if origin.strip()
         ],
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-API-Key"],
@@ -114,6 +121,11 @@ def disabled(_request: Request, exc: UrlDisabledError):
     return error("url_disabled", str(exc), status.HTTP_410_GONE)
 
 
+@app.exception_handler(PublicAnalyticsNotFoundError)
+def public_analytics_not_found(_request: Request, exc: PublicAnalyticsNotFoundError):
+    return error("analytics_not_found", str(exc), status.HTTP_404_NOT_FOUND)
+
+
 @app.exception_handler(InvalidApiKeyError)
 def unauthorized(_request: Request, exc: InvalidApiKeyError):
     return error("unauthorized", str(exc), status.HTTP_401_UNAUTHORIZED)
@@ -144,7 +156,7 @@ def liveness():
 def readiness():
     try:
         cassandra_connection.get_session().execute("SELECT now() FROM system.local")
-    except (DriverException, RuntimeError):
+    except DriverException, RuntimeError:
         return error(
             "not_ready", "Cassandra is unavailable", status.HTTP_503_SERVICE_UNAVAILABLE
         )
@@ -152,4 +164,5 @@ def readiness():
 
 
 app.include_router(api_router)
+app.include_router(public_api_router)
 app.include_router(redirect_router)

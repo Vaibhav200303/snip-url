@@ -125,6 +125,21 @@ input:focus { border-color: var(--accent); outline-color: var(--soft); }
 .meta { display: flex; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 11px; }
 .actions { display: flex; gap: 8px; }
 
+.public-analytics { padding: 46px 0 4px; }
+.analytics-heading { margin-bottom: 16px; }
+.analytics-lookup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .65fr); overflow: hidden; }
+.analytics-lookup form { display: grid; align-content: center; gap: 12px; min-height: 220px; padding: 28px; }
+.lookup-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.lookup-row .button { min-width: 138px; }
+.public-analytics-result { display: grid; align-content: center; min-width: 0; padding: 28px; border-left: 1px solid var(--line); background: #fff8ed; }
+.public-total { display: grid; }
+.public-total strong { font-size: 38px; line-height: 1; letter-spacing: -.04em; }
+.public-total span, .public-analytics-result > p { color: var(--muted); font-size: 11px; }
+.public-chart { display: flex; align-items: flex-end; gap: 3px; height: 70px; margin: 20px 0 8px; border-bottom: 1px solid #d8cdbd; }
+.public-bar-wrap { display: flex; align-items: flex-end; flex: 1; height: 100%; }
+.public-bar { width: 100%; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--accent); }
+.public-analytics-result > p { margin: 3px 0 0; }
+
 .recent-section { padding: 48px 0 90px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
 .section-heading h2, .table-card h2, .detail-card h2 { margin: 5px 0 0; font-size: 24px; letter-spacing: -.03em; }
@@ -195,6 +210,8 @@ dd { margin: 5px 0 0; font-size: 12px; word-break: break-all; }
   .hero { max-width: 560px; }
   .hero p { max-width: none; }
   .admin-grid { grid-template-columns: 1fr; }
+  .analytics-lookup { grid-template-columns: 1fr; }
+  .public-analytics-result { border-top: 1px solid var(--line); border-left: 0; }
   .detail-card { min-height: 300px; }
   .admin-title { align-items: flex-start; gap: 20px; }
   .table-scroll { overflow-x: auto; }
@@ -209,6 +226,7 @@ dd { margin: 5px 0 0; font-size: 12px; word-break: break-all; }
   .hero p { font-size: 17px; }
   .shortener-card { padding: 20px; }
   .form-grid { grid-template-columns: 1fr; }
+  .lookup-row { grid-template-columns: 1fr; }
   .result-card { align-items: flex-start; flex-wrap: wrap; }
   .result-card .actions { width: 100%; padding-left: 56px; }
   .section-heading { align-items: flex-start; }

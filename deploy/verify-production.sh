@@ -27,6 +27,9 @@ public_protected="$(status --header "Host: ${public_host}" \
   --header "X-API-Key: ${api_key}" "http://127.0.0.1/api/v1/urls/${short_code}")"
 public_redirect="$(status --header "Host: ${public_host}" \
   "http://127.0.0.1/${short_code}")"
+public_analytics="$(status --request POST --header "Host: ${public_host}" \
+  --header 'Content-Type: application/json' --data "{\"url\":\"${short_code}\"}" \
+  "http://127.0.0.1/api/v1/public/analytics")"
 
 today="$(date -u +%F)"
 analytics=""
@@ -55,6 +58,9 @@ disable="$(status --request PATCH --header "X-API-Key: ${api_key}" \
   "${admin_base}/api/v1/urls/${short_code}")"
 disabled_redirect="$(status --header "Host: ${public_host}" \
   "http://127.0.0.1/${short_code}")"
+disabled_public_analytics="$(status --request POST --header "Host: ${public_host}" \
+  --header 'Content-Type: application/json' --data "{\"url\":\"${short_code}\"}" \
+  "http://127.0.0.1/api/v1/public/analytics")"
 reenable="$(status --request PATCH --header "X-API-Key: ${api_key}" \
   --header 'Content-Type: application/json' --data '{"is_enabled":true}' \
   "${admin_base}/api/v1/urls/${short_code}")"
@@ -65,9 +71,11 @@ expect list "${listing}" 200
 expect public_admin "${public_admin}" 404
 expect public_protected "${public_protected}" 404
 expect public_redirect "${public_redirect}" 302
+expect public_analytics "${public_analytics}" 200
 expect cache_key "${cache_key}" 1
 expect disable "${disable}" 200
 expect disabled_redirect "${disabled_redirect}" 410
+expect disabled_public_analytics "${disabled_public_analytics}" 404
 expect reenable "${reenable}" 200
 if ! grep -Eq '"total_clicks"[[:space:]]*:[[:space:]]*[1-9]' <<<"${analytics}"; then
   echo "analytics did not contain a positive total" >&2
@@ -79,6 +87,8 @@ printf '{"admin_page":%s,"detail":%s,"list":%s,"public_admin":%s,' \
 printf '"public_protected_with_valid_key":%s,"cache_key":%s,' \
   "${public_protected}" "${cache_key}"
 printf '"public_redirect":%s,' "${public_redirect}"
+printf '"public_analytics":%s,"disabled_public_analytics":%s,' \
+  "${public_analytics}" "${disabled_public_analytics}"
 printf '"frontend_secret_absent":true,"consumer_secret_absent":true,'
 printf '"disable":%s,"disabled_redirect":%s,"reenable":%s,"analytics":%s}\n' \
   "${disable}" "${disabled_redirect}" "${reenable}" "${analytics}"
