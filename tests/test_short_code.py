@@ -26,3 +26,11 @@ def test_short_code_generator_uses_snowflake():
     generator.generate()
 
     assert snowflake.calls == 1
+
+
+def test_secret_masks_predictable_snowflake_id():
+    first = ShortCodeGenerator(FakeSnowflake(), "a" * 32).generate()
+    second = ShortCodeGenerator(FakeSnowflake(), "b" * 32).generate()
+
+    assert first != "21"
+    assert first != second

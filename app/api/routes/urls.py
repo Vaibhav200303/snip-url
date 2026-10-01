@@ -31,6 +31,11 @@ rate_limiter = RateLimiter()
 
 
 def _identity(request: Request) -> str:
+    # Nginx overwrites this header with the actual peer address. Direct access
+    # to the API is bound to loopback only in Compose.
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip
     return request.client.host if request.client else "unknown"
 
 

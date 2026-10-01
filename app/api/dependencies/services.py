@@ -9,12 +9,11 @@ from app.services.redirect_service import RedirectService
 from app.services.url_service import UrlService
 
 
-# Temporary configuration.
-# We'll move this to the application container later.
 def get_short_code_generator() -> ShortCodeGenerator:
+    from app.config.settings import settings
     from app.core.snowflake import snowflake_generator
 
-    return ShortCodeGenerator(snowflake_generator)
+    return ShortCodeGenerator(snowflake_generator, settings.short_code_secret)
 
 
 def get_url_service() -> UrlService:

@@ -11,7 +11,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes.urls import api_router, redirect_router
-from app.config.settings import settings
+from app.config.settings import settings, validate_production_settings
 from app.core.exceptions import InvalidApiKeyError
 from app.database.cassandra.connection import cassandra_connection
 from app.database.cassandra.schema import create_keyspace, create_tables
@@ -57,6 +57,7 @@ def _connect_cassandra() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    validate_production_settings()
     _connect_cassandra()
     logger.info("Application ready")
     yield

@@ -84,3 +84,21 @@ def test_management_endpoint_requires_api_key():
     assert unauthorized.status_code == 401
     assert unauthorized.json()["error"]["code"] == "unauthorized"
     assert authorized.status_code == 200
+
+
+def test_rate_limit_identity_uses_proxy_real_ip(monkeypatch):
+    client, _ = make_client()
+    identities = []
+
+    def capture(_scope, identity, _limit, _window):
+        identities.append(identity)
+
+    monkeypatch.setattr("app.api.routes.urls.rate_limiter.check", capture)
+    with client:
+        response = client.post(
+            "/api/v1/urls",
+            headers={"X-Real-IP": "203.0.113.9"},
+            json={"long_url": "https://example.com"},
+        )
+    assert response.status_code == 201
+    assert identities == ["203.0.113.9"]

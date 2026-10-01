@@ -58,9 +58,14 @@ def main() -> None:
             if message is None:
                 continue
             if message.error():
-                if message.error().code() != KafkaError._PARTITION_EOF:
+                if message.error().code() in (
+                    KafkaError._PARTITION_EOF,
+                    KafkaError.UNKNOWN_TOPIC_OR_PART,
+                ):
+                    logger.warning("Kafka topic not ready: %s", message.error())
+                    continue
+                else:
                     raise KafkaException(message.error())
-                continue
             event = ClickEvent.model_validate_json(message.value())
             clicked_at = event.clicked_at
             if clicked_at.tzinfo is None:

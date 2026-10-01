@@ -12,13 +12,18 @@ class RateLimitExceededError(Exception):
 
 
 class RateLimiter:
+    SCRIPT = """
+    local count = redis.call('INCR', KEYS[1])
+    if count == 1 then
+        redis.call('EXPIRE', KEYS[1], ARGV[1])
+    end
+    return count
+    """
+
     def check(self, scope: str, identity: str, limit: int, window: int) -> None:
         key = f"rate:{scope}:{identity}"
         try:
-            with redis_client.pipeline(transaction=True) as pipeline:
-                pipeline.incr(key)
-                pipeline.expire(key, window)
-                count, _ = pipeline.execute()
+            count = redis_client.eval(self.SCRIPT, 1, key, window)
             if count > limit:
                 raise RateLimitExceededError("rate limit exceeded")
         except RateLimitExceededError:

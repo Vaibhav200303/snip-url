@@ -97,6 +97,7 @@ See `.env.example` for all settings. Important production values are:
 
 - `PUBLIC_BASE_URL`: externally reachable API origin.
 - `ADMIN_API_KEY`: secret for management and analytics operations.
+- `SHORT_CODE_SECRET`: HMAC secret that masks Snowflake IDs in public codes.
 - `SNOWFLAKE_WORKER_ID`: must be unique per concurrently running API replica.
 - `CREATE_RATE_LIMIT` and `REDIRECT_RATE_LIMIT`: per-IP requests per window.
 - `ANALYTICS_RETENTION_DAYS`: Cassandra TTL for click events.
@@ -192,10 +193,11 @@ gcloud compute instances create snipurl-vm \
   --boot-disk-type=pd-balanced --tags=snipurl-web \
   --metadata-from-file=startup-script=deploy/bootstrap-vm.sh
 
-gcloud compute scp --recurse . snipurl-vm:/tmp/snip-url \
+git archive --format=tar.gz -o snip-url.tar.gz HEAD
+gcloud compute scp snip-url.tar.gz snipurl-vm:/tmp/ \
   --zone=asia-south1-a
 gcloud compute ssh snipurl-vm --zone=asia-south1-a
-sudo cp -a /tmp/snip-url/. /opt/snip-url/
+sudo tar -xzf /tmp/snip-url.tar.gz -C /opt/snip-url
 cd /opt/snip-url
 sudo docker compose up -d --build
 ```
@@ -209,6 +211,8 @@ Encrypt HTTPS. Never use self-signed TLS as a public-production substitute.
 
 ## Security and scaling notes
 
+- Production startup rejects weak/default admin keys, missing short-code HMAC
+  secrets, and wildcard trusted-host configuration.
 - Input is validated on both frontend and backend; aliases allow only
   `[A-Za-z0-9_-]{3,32}` and reserved application paths are rejected.
 - Management endpoints use constant-time API-key comparison. The key belongs in

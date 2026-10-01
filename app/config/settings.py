@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     redis_port: int = 6379
     public_base_url: str = "http://localhost:8000"
     admin_api_key: str = "change-me"
+    short_code_secret: str = ""
     cache_ttl_seconds: int = 3600
     create_rate_limit: int = 30
     redirect_rate_limit: int = 300
@@ -42,3 +43,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_production_settings() -> None:
+    if settings.environment.lower() != "production":
+        return
+    if len(settings.admin_api_key) < 32 or settings.admin_api_key == "change-me":
+        raise RuntimeError("ADMIN_API_KEY must be a strong production secret")
+    if len(settings.short_code_secret) < 32:
+        raise RuntimeError("SHORT_CODE_SECRET must be a strong production secret")
+    if settings.trusted_hosts.strip() == "*":
+        raise RuntimeError("TRUSTED_HOSTS must be restricted in production")
