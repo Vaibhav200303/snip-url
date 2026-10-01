@@ -14,6 +14,9 @@ status() {
 admin_page="$(status "${admin_base}/admin")"
 detail="$(status --header "X-API-Key: ${api_key}" "${admin_base}/api/v1/urls/${short_code}")"
 listing="$(status --header "X-API-Key: ${api_key}" "${admin_base}/api/v1/urls?limit=10")"
+public_admin="$(status --header "Host: ${public_host}" "http://127.0.0.1/admin")"
+public_protected="$(status --header "Host: ${public_host}" \
+  --header "X-API-Key: ${api_key}" "http://127.0.0.1/api/v1/urls/${short_code}")"
 
 today="$(date -u +%F)"
 analytics=""
@@ -37,7 +40,15 @@ reenable="$(status --request PATCH --header "X-API-Key: ${api_key}" \
   --header 'Content-Type: application/json' --data '{"is_enabled":true}' \
   "${admin_base}/api/v1/urls/${short_code}")"
 
-printf '{"admin_page":%s,"detail":%s,"list":%s,"cache_key":%s,' \
-  "${admin_page}" "${detail}" "${listing}" "${cache_key}"
+[[ "${admin_page}" == "200" && "${detail}" == "200" && "${listing}" == "200" ]]
+[[ "${public_admin}" == "404" && "${public_protected}" == "404" ]]
+[[ "${cache_key}" == "1" && "${disable}" == "200" ]]
+[[ "${disabled_redirect}" == "410" && "${reenable}" == "200" ]]
+grep -Eq '"total_clicks"[[:space:]]*:[[:space:]]*[1-9]' <<<"${analytics}"
+
+printf '{"admin_page":%s,"detail":%s,"list":%s,"public_admin":%s,' \
+  "${admin_page}" "${detail}" "${listing}" "${public_admin}"
+printf '"public_protected_with_valid_key":%s,"cache_key":%s,' \
+  "${public_protected}" "${cache_key}"
 printf '"disable":%s,"disabled_redirect":%s,"reenable":%s,"analytics":%s}\n' \
   "${disable}" "${disabled_redirect}" "${reenable}" "${analytics}"
