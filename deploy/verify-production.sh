@@ -31,6 +31,15 @@ done
 
 cache_key="$(cd "${app_dir}" && docker compose exec -T redis \
   redis-cli EXISTS "url:${short_code}" | tr -d '\r')"
+if docker exec snip-url-web-1 grep -R -F -q "${api_key}" /usr/share/nginx/html; then
+  echo "ADMIN_API_KEY was found in the frontend bundle" >&2
+  exit 1
+fi
+if docker inspect --format '{{json .Config.Env}}' snip-url-analytics-consumer-1 | \
+  grep -q 'ADMIN_API_KEY='; then
+  echo "ADMIN_API_KEY was passed to the analytics consumer" >&2
+  exit 1
+fi
 disable="$(status --request PATCH --header "X-API-Key: ${api_key}" \
   --header 'Content-Type: application/json' --data '{"is_enabled":false}' \
   "${admin_base}/api/v1/urls/${short_code}")"
@@ -50,5 +59,6 @@ printf '{"admin_page":%s,"detail":%s,"list":%s,"public_admin":%s,' \
   "${admin_page}" "${detail}" "${listing}" "${public_admin}"
 printf '"public_protected_with_valid_key":%s,"cache_key":%s,' \
   "${public_protected}" "${cache_key}"
+printf '"frontend_secret_absent":true,"consumer_secret_absent":true,'
 printf '"disable":%s,"disabled_redirect":%s,"reenable":%s,"analytics":%s}\n' \
   "${disable}" "${disabled_redirect}" "${reenable}" "${analytics}"
