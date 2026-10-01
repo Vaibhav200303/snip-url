@@ -5,6 +5,21 @@ FastAPI, Cassandra, Redis, and Kafka. It combines a polished responsive UI with
 collision-safe distributed IDs, cache-aside reads, fail-open rate limiting,
 protected management APIs, and event-driven analytics.
 
+## Live deployment
+
+The current portfolio deployment is available at
+[http://34.93.165.173](http://34.93.165.173). It runs the complete six-service
+Compose stack on Google Compute Engine. Public HTTP serves URL creation,
+redirects, health checks, documentation, and privacy-limited aggregate
+analytics. Administrative pages and API-key-protected requests are not exposed
+on the public listener.
+
+The deployment is intentionally using an IP address and plain HTTP for its
+anonymous public surface. Before sending any credential over the network, use
+the documented SSH tunnel for the private admin listener. See
+[SECURITY.md](SECURITY.md) for the security boundary and production-hardening
+requirements.
+
 ## Architecture
 
 ```text
@@ -80,6 +95,18 @@ Anyone can check aggregate activity for an active link without an API key:
 curl -X POST http://localhost/api/v1/public/analytics \
   -H "Content-Type: application/json" \
   -d '{"url":"example"}'
+```
+
+Example response:
+
+```json
+{
+  "matched_links": 1,
+  "total_clicks": 12,
+  "daily": [
+    {"date": "2026-10-01", "clicks": 12}
+  ]
+}
 ```
 
 The `url` value may be a short code, a complete SnipURL, or an original
@@ -201,9 +228,10 @@ only authoritative store and should be snapshotted and copied off-host.
 
 ## Google Cloud deployment
 
-The initial portfolio deployment uses one Ubuntu 24.04 Compute Engine
-`e2-standard-2` VM in `asia-south1`, a 50 GB balanced persistent disk, Docker
-Compose, and a reserved static external IP. The repository includes
+The live portfolio deployment uses one Ubuntu 24.04 Compute Engine
+`e2-standard-2` VM named `snipurl-vm` in `asia-south1-a`, a 50 GB balanced
+persistent disk, Docker Compose, and reserved static IP `34.93.165.173`. The
+repository includes
 `deploy/bootstrap-vm.sh` to install Docker Engine and the Compose plugin.
 
 Deployment outline:
@@ -228,16 +256,32 @@ sudo docker compose up -d --build
 Create a production `.env` on the VM with a strong `ADMIN_API_KEY`, the public
 IP in `PUBLIC_BASE_URL` and `TRUSTED_HOSTS`, and an empty `CORS_ORIGINS`. Permit
 TCP 80 to instances tagged `snipurl-web`; do not create public firewall rules
-for port 8080, Cassandra, Redis, or Kafka. Open the remote admin securely with
-`gcloud compute ssh snipurl-vm --zone=asia-south1-a -- -L 8080:localhost:8080`
-and browse to `http://localhost:8080/admin`. The API key crosses the Internet only
-inside the encrypted SSH tunnel. If a domain is later attached, point its A record
-to the reserved IP and add Caddy or another TLS-terminating proxy for Let's
-Encrypt HTTPS. Never use self-signed TLS as a public-production substitute.
+for port 8080, Cassandra, Redis, or Kafka. Open the remote admin securely with:
+
+```bash
+gcloud compute ssh snipurl-vm --zone=asia-south1-a -- -L 18080:localhost:8080
+```
+
+Then browse to `http://localhost:18080/admin`. The API key crosses the Internet
+only inside the encrypted SSH tunnel. If a domain is later attached, point its A
+record to the reserved IP and add Caddy or another TLS-terminating proxy for
+Let's Encrypt HTTPS. Never use self-signed TLS as a public-production substitute.
 
 `deploy/configure-production.sh <PUBLIC_IP>` creates the VM-only `.env` with
 cryptographically random administrator and short-code secrets, refuses to
 overwrite an existing environment, and sets file mode `0600`.
+
+After deployment, create and follow a test link, then run the production
+verification script on the VM:
+
+```bash
+cd /opt/snip-url
+sudo bash deploy/verify-production.sh <SHORT_CODE> 34.93.165.173
+```
+
+It verifies public/private route isolation, redirect caching, Kafka-backed
+analytics, disabled-link behavior, and that the administrator secret is absent
+from the frontend and consumer containers.
 
 ## Security and scaling notes
 
