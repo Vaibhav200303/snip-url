@@ -11,6 +11,14 @@ status() {
   curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$@"
 }
 
+expect() {
+  local label="$1" actual="$2" expected="$3"
+  if [[ "${actual}" != "${expected}" ]]; then
+    printf '%s: expected %s, got %s\n' "${label}" "${expected}" "${actual}" >&2
+    exit 1
+  fi
+}
+
 admin_page="$(status "${admin_base}/admin")"
 detail="$(status --header "X-API-Key: ${api_key}" "${admin_base}/api/v1/urls/${short_code}")"
 listing="$(status --header "X-API-Key: ${api_key}" "${admin_base}/api/v1/urls?limit=10")"
@@ -49,11 +57,19 @@ reenable="$(status --request PATCH --header "X-API-Key: ${api_key}" \
   --header 'Content-Type: application/json' --data '{"is_enabled":true}' \
   "${admin_base}/api/v1/urls/${short_code}")"
 
-[[ "${admin_page}" == "200" && "${detail}" == "200" && "${listing}" == "200" ]]
-[[ "${public_admin}" == "404" && "${public_protected}" == "404" ]]
-[[ "${cache_key}" == "1" && "${disable}" == "200" ]]
-[[ "${disabled_redirect}" == "410" && "${reenable}" == "200" ]]
-grep -Eq '"total_clicks"[[:space:]]*:[[:space:]]*[1-9]' <<<"${analytics}"
+expect admin_page "${admin_page}" 200
+expect detail "${detail}" 200
+expect list "${listing}" 200
+expect public_admin "${public_admin}" 404
+expect public_protected "${public_protected}" 404
+expect cache_key "${cache_key}" 1
+expect disable "${disable}" 200
+expect disabled_redirect "${disabled_redirect}" 410
+expect reenable "${reenable}" 200
+if ! grep -Eq '"total_clicks"[[:space:]]*:[[:space:]]*[1-9]' <<<"${analytics}"; then
+  echo "analytics did not contain a positive total" >&2
+  exit 1
+fi
 
 printf '{"admin_page":%s,"detail":%s,"list":%s,"public_admin":%s,' \
   "${admin_page}" "${detail}" "${listing}" "${public_admin}"

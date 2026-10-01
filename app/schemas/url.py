@@ -4,7 +4,8 @@ from datetime import UTC, date, datetime
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9_-]{3,32}$")
-RESERVED_ALIASES = {"api", "docs", "redoc", "health", "openapi.json"}
+RESERVED_ALIASES = {"admin", "api", "docs", "redoc", "health", "openapi.json"}
+
 
 class ShortenUrlRequest(BaseModel):
     long_url: HttpUrl

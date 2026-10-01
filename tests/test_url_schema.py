@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from app.schemas.url import ShortenUrlRequest, UpdateUrlRequest
 
 
-@pytest.mark.parametrize("alias", ["api", "docs", "bad alias", "a!b"])
+@pytest.mark.parametrize("alias", ["admin", "AdMiN", "api", "docs", "bad alias", "a!b"])
 def test_rejects_reserved_or_unsafe_aliases(alias):
     with pytest.raises(ValidationError):
         ShortenUrlRequest(long_url="https://example.com", custom_alias=alias)
