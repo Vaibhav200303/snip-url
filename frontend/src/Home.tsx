@@ -55,29 +55,30 @@ export default function Home() {
 
   return <div className="site-shell">
     <Header />
-    <main>
-      <section className="hero">
-        <div className="eyebrow"><span /> Built for reliable redirects</div>
-        <h1>SnipURL</h1>
-        <p>Fast links. Simple analytics. Built to scale.</p>
-      </section>
+    <main className="home-main">
+      <section className="intro-grid">
+        <div className="hero">
+          <h1>SnipURL</h1>
+          <p>Fast links. Simple analytics. Built to scale.</p>
+        </div>
 
-      <section className="shortener-card card">
-        <form onSubmit={submit} noValidate>
-          <label className="wide">Long URL<span>Where should your short link go?</span>
-            <input type="url" required value={longUrl} onChange={(e) => setLongUrl(e.target.value)} placeholder="https://example.com/a-very-long-url" autoFocus />
-          </label>
-          <div className="form-grid">
-            <label>Custom alias <span>Optional</span>
-              <div className="input-prefix"><b>/</b><input value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="your-alias" maxLength={32}/></div>
+        <div className="shortener-card card">
+          <form onSubmit={submit} noValidate>
+            <label className="wide">Long URL<span>Where should your short link go?</span>
+              <input type="url" required value={longUrl} onChange={(e) => setLongUrl(e.target.value)} placeholder="https://example.com/a-very-long-url" autoFocus />
             </label>
-            <label>Expiration <span>Optional</span>
-              <input type="datetime-local" value={expiration} onChange={(e) => setExpiration(e.target.value)} />
-            </label>
-          </div>
-          {error && <div className="alert" role="alert">{error}</div>}
-          <button className="button primary submit" disabled={loading}>{loading ? <><Spinner/> Shortening…</> : 'Shorten URL'}</button>
-        </form>
+            <div className="form-grid">
+              <label>Custom alias <span>Optional</span>
+                <div className="input-prefix"><b>/</b><input value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="your-alias" maxLength={32}/></div>
+              </label>
+              <label>Expiration <span>Optional</span>
+                <input type="datetime-local" value={expiration} onChange={(e) => setExpiration(e.target.value)} />
+              </label>
+            </div>
+            {error && <div className="alert" role="alert">{error}</div>}
+            <button className="button primary submit" disabled={loading}>{loading ? <><Spinner/> Shortening…</> : 'Shorten URL'}</button>
+          </form>
+        </div>
       </section>
 
       {result && <section className="result-card card appear" aria-live="polite">
@@ -99,6 +100,6 @@ export default function Home() {
         </article>)}</div>
       </section>}
     </main>
-    <footer><Logo/><span>Fast by design. Private by default.</span></footer>
+    <footer><Logo/><span>© {new Date().getFullYear()} SnipURL</span></footer>
   </div>
 }
