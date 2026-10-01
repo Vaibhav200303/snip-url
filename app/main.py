@@ -6,6 +6,8 @@ from cassandra import DriverException
 from cassandra.cluster import NoHostAvailable
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes.urls import api_router, redirect_router
@@ -63,6 +65,19 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[host.strip() for host in settings.trusted_hosts.split(",") if host.strip()],
+)
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()
+        ],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Content-Type", "X-API-Key"],
+    )
 
 
 def error(code: str, message: str, http_status: int) -> JSONResponse:

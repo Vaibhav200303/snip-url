@@ -15,6 +15,18 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
       - run: docker compose config
       - run: docker build -t snipurl-api .
       - run: docker build -f Dockerfile.consumer -t snipurl-consumer .
+      - run: docker build -t snipurl-web frontend

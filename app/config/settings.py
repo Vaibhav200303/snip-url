@@ -28,6 +28,8 @@ class Settings(BaseSettings):
 
     startup_attempts: int = 20
     startup_delay_seconds: float = 2.0
+    trusted_hosts: str = "*"
+    cors_origins: str = "http://localhost:5173"
     snowflake_worker_id: int = 1
     snowflake_epoch_ms: int = 1767225600000
     snowflake_max_clock_rollback_ms: int = 5
