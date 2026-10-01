@@ -25,6 +25,8 @@ listing="$(status --header "X-API-Key: ${api_key}" "${admin_base}/api/v1/urls?li
 public_admin="$(status --header "Host: ${public_host}" "http://127.0.0.1/admin")"
 public_protected="$(status --header "Host: ${public_host}" \
   --header "X-API-Key: ${api_key}" "http://127.0.0.1/api/v1/urls/${short_code}")"
+public_redirect="$(status --header "Host: ${public_host}" \
+  "http://127.0.0.1/${short_code}")"
 
 today="$(date -u +%F)"
 analytics=""
@@ -62,6 +64,7 @@ expect detail "${detail}" 200
 expect list "${listing}" 200
 expect public_admin "${public_admin}" 404
 expect public_protected "${public_protected}" 404
+expect public_redirect "${public_redirect}" 302
 expect cache_key "${cache_key}" 1
 expect disable "${disable}" 200
 expect disabled_redirect "${disabled_redirect}" 410
@@ -75,6 +78,7 @@ printf '{"admin_page":%s,"detail":%s,"list":%s,"public_admin":%s,' \
   "${admin_page}" "${detail}" "${listing}" "${public_admin}"
 printf '"public_protected_with_valid_key":%s,"cache_key":%s,' \
   "${public_protected}" "${cache_key}"
+printf '"public_redirect":%s,' "${public_redirect}"
 printf '"frontend_secret_absent":true,"consumer_secret_absent":true,'
 printf '"disable":%s,"disabled_redirect":%s,"reenable":%s,"analytics":%s}\n' \
   "${disable}" "${disabled_redirect}" "${reenable}" "${analytics}"
