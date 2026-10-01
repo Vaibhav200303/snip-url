@@ -26,7 +26,7 @@ export function CopyButton({ value, label = 'Copy' }: { value: string; label?: s
 }
 
 export function Header({ admin = false }: { admin?: boolean }) {
-  return <header><Logo/><nav>{admin ? <a href="/">Create link</a> : <a href="/admin">Admin</a>}<a href="/docs" target="_blank">API docs</a></nav></header>
+  return <header><Logo/><nav>{admin && <a href="/">Create link</a>}<a href="/docs" target="_blank">API docs</a></nav></header>
 }
 
 export function Spinner() {

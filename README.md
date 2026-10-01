@@ -21,9 +21,10 @@ FastAPI
 ```
 
 The frontend is React, TypeScript, and Vite. Nginx serves its production build
-and routes `/api/*`, `/health/*`, and valid single-segment short codes to
-FastAPI. Only `/` and `/admin` are frontend routes, preventing arbitrary SPA
-paths from being mistaken for short codes.
+and routes public creation, `/health/*`, and valid single-segment short codes to
+FastAPI. The management API and `/admin` are available only on a loopback-bound
+listener reached through SSH, preventing both credential exposure and arbitrary
+SPA paths from being mistaken for short codes.
 
 Cassandra stores canonical URL records and a denormalized creation-time index.
 Redis is non-authoritative: cache or rate-limiter failures do not take down URL
@@ -41,8 +42,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The complete application is available at `http://localhost`, the admin dashboard
-at `/admin`, Swagger UI at `/docs`, and readiness at `/health/ready`. The backend
+The public application is available at `http://localhost`, Swagger UI at
+`/docs`, and readiness at `/health/ready`. The admin dashboard is intentionally
+available only at the loopback-bound `http://localhost:8080/admin`. The backend
 also binds to local-only `127.0.0.1:8000` for development. Cassandra can take
 around a minute to become healthy on its first start.
 
@@ -59,14 +61,14 @@ curl -i http://localhost/example
 Management calls require the configured API key:
 
 ```bash
-curl http://localhost/api/v1/urls/example \
+curl http://localhost:8080/api/v1/urls/example \
   -H "X-API-Key: change-me"
 
-curl -X PATCH http://localhost/api/v1/urls/example \
+curl -X PATCH http://localhost:8080/api/v1/urls/example \
   -H "X-API-Key: change-me" -H "Content-Type: application/json" \
   -d '{"is_enabled":false}'
 
-curl "http://localhost/api/v1/urls/example/analytics?from=2026-10-01&to=2026-10-31" \
+curl "http://localhost:8080/api/v1/urls/example/analytics?from=2026-10-01&to=2026-10-31" \
   -H "X-API-Key: change-me"
 ```
 
@@ -151,7 +153,7 @@ The home page creates generated or custom short links, supports expiration, and
 keeps the eight most recent creations in browser `localStorage`. That recent list
 is explicitly local history, not an account feature.
 
-`/admin` prompts for `ADMIN_API_KEY`, stores it only in browser `sessionStorage`,
+`http://localhost:8080/admin` prompts for `ADMIN_API_KEY`, stores it only in browser `sessionStorage`,
 and provides URL listing, enable/disable, deletion, and date-range analytics. The
 key is never compiled into the frontend bundle or written to persistent browser
 storage. Use **Clear key & log out** on shared computers.
@@ -163,9 +165,9 @@ the browser uses the same public origin.
 ## Docker networking and persistence
 
 The Compose stack runs six containers: `web`, `api`, `analytics-consumer`,
-`cassandra`, `redis`, and `kafka`. Only Nginx port 80 is publicly bound. The API
-has a loopback-only development binding; Cassandra, Redis, and Kafka have no host
-port mappings.
+`cassandra`, `redis`, and `kafka`. Only Nginx port 80 is publicly bound. Nginx's
+admin listener on port 8080 and the API's port 8000 are bound to host loopback;
+Cassandra, Redis, and Kafka have no host port mappings.
 
 Named volumes survive ordinary restarts and `docker compose down`:
 
@@ -205,7 +207,10 @@ sudo docker compose up -d --build
 Create a production `.env` on the VM with a strong `ADMIN_API_KEY`, the public
 IP in `PUBLIC_BASE_URL` and `TRUSTED_HOSTS`, and an empty `CORS_ORIGINS`. Permit
 TCP 80 to instances tagged `snipurl-web`; do not create public firewall rules
-for Cassandra, Redis, or Kafka. If a domain is later attached, point its A record
+for port 8080, Cassandra, Redis, or Kafka. Open the remote admin securely with
+`gcloud compute ssh snipurl-vm --zone=asia-south1-a -- -L 8080:localhost:8080`
+and browse to `http://localhost:8080/admin`. The API key crosses the Internet only
+inside the encrypted SSH tunnel. If a domain is later attached, point its A record
 to the reserved IP and add Caddy or another TLS-terminating proxy for Let's
 Encrypt HTTPS. Never use self-signed TLS as a public-production substitute.
 
@@ -217,6 +222,9 @@ Encrypt HTTPS. Never use self-signed TLS as a public-production substitute.
   `[A-Za-z0-9_-]{3,32}` and reserved application paths are rejected.
 - Management endpoints use constant-time API-key comparison. The key belongs in
   the VM-only `.env`, not Git, image layers, or frontend variables.
+- Public HTTP returns 404 for `/admin` and all management/analytics requests.
+  Administrative traffic is restricted to a loopback listener reached through
+  SSH, so `ADMIN_API_KEY` is never sent over public cleartext HTTP.
 - Nginx adds basic browser security headers, FastAPI validates trusted hosts, and
   production runs same-origin without permissive CORS.
 - Redis failures degrade to Cassandra and fail open for availability. Cassandra
