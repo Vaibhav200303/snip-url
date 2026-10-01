@@ -1,0 +1,42 @@
+[project]
+name = "snip-url"
+version = "0.1.0"
+description = "A production-minded URL shortener built with FastAPI, Cassandra, Redis, and Kafka"
+readme = "README.md"
+authors = [
+    { name = "Vaibhav Sharma", email = "your-email@example.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "cassandra-driver>=3.30.1",
+    "fastapi>=0.141.1",
+    "confluent-kafka>=2.12.0",
+    "pyasyncore>=1.0.5",
+    "pydantic-settings>=2.15.0",
+    "redis>=8.1.0",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[project.scripts]
+snip-url = "snip_url:main"
+
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/snip_url", "app"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.2",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = ["B", "I", "UP"]
+ignore = ["B008"]
